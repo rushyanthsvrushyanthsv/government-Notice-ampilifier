@@ -1,11 +1,29 @@
-<div align="center">
+# Government Notice Simplifier Backend
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+AI-powered SaaS helping Indian citizens understand and act on complex government notices.
 
-  <h1>Built with AI Studio</h2>
+## Features
+- **Magic Scan**: OCR + AI analysis (Gemini 1.5 Pro) to simplify legal jargon.
+- **Deadline Tracking**: Automatic extraction and reminders (Celery + Redis).
+- **Multilingual Support**: Automatic translation to Kannada.
+- **Admin Dashboard**: Comprehensive platform management.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Tech Stack
+- **FastAPI**: Modern, high-performance web framework.
+- **PostgreSQL**: Primary database with SQLAlchemy ORM.
+- **Redis**: Caching and background task broker.
+- **Celery**: Distributed task queue for processing.
+- **Google Cloud**: Vision, Document AI, Translate, and GCS.
+- **Gemini**: State-of-the-art LLM for simplification.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Quick Start (Docker)
+1. Copy `.env.example` to `.env` and fill in credentials.
+2. Run `docker-compose up --build`.
+3. API available at `http://localhost:8000/docs`.
 
-</div>
+## API Documentation
+- `/api/v1/auth`: Registration, Login, Google OAuth.
+- `/api/v1/notices`: Upload and manage government documents.
+- `/api/v1/notifications`: In-app and push alerts.
+- `/api/v1/translate`: Multilingual support.
+- `/api/v1/admin`: Platform statistics and user management.

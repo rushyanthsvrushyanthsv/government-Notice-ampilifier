@@ -1,0 +1,6 @@
+{
+  "name": "GovNotice AI",
+  "description": "AI-powered platform to simplify, summarize, and track government notices with smart alerts and multilingual support.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["AI Summarization", "Deadline Tracking", "Multilingual Support", "Smart Alerts"]
+}

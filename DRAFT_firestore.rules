@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        getUserData(request.auth.uid).role == 'admin'
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validations ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) 
+        && data.uid == request.auth.uid
+        && data.role is string
+        && data.email is string && data.email.size() <= 256;
+    }
+
+    function isValidNotice(data) {
+      return data.keys().hasAll(['userId', 'title', 'originalText', 'status', 'simplifiedSummary', 'simplifiedSummaryLanguage', 'isExpired', 'createdAt', 'updatedAt'])
+        && data.userId == request.auth.uid
+        && data.title is string && data.title.size() <= 1000
+        && data.originalText is string && data.originalText.size() <= 200000
+        && data.status in ['pending', 'processed', 'urgent', 'completed', 'expired']
+        && data.simplifiedSummaryLanguage in ['en', 'kn']
+        && data.simplifiedSummary is string && data.simplifiedSummary.size() <= 10000
+        && data.isExpired is bool
+        && (data.get('category', null) == null || data.category is string)
+        && (data.get('warnings', null) == null || data.warnings is list)
+        && (data.get('contacts', null) == null || data.contacts is list);
+    }
+
+    function isValidActionItem(data) {
+      return data.keys().hasAll(['noticeId', 'userId', 'text', 'completed'])
+        && data.userId == request.auth.uid
+        && data.text is string && data.text.size() <= 1000
+        && data.completed is bool;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'title', 'message', 'type', 'read'])
+        && data.userId is string
+        && data.title is string && data.title.size() <= 200
+        && data.message is string && data.message.size() <= 1000
+        && data.type in ['info', 'warning', 'deadline', 'system']
+        && data.read is bool;
+    }
+
+    // --- Collection Rules ---
+
+    // Admins collection (read-only for members, write only by existing admins or system)
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Users
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      // Users can only create themselves as 'user' role
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().role == 'user';
+      // Users can only update non-RBAC fields
+      allow update: if isOwner(userId) && isValidUser(incoming())
+        && incoming().role == existing().role
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']);
+      // Admins can upgrade roles (e.g. through the console or a specific admin function)
+      allow update: if isAdmin() && isValidUser(incoming()) 
+        && incoming().diff(existing()).affectedKeys().hasAny(['role', 'updatedAt']);
+    }
+
+    // Notices
+    match /notices/{noticeId} {
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isEmailVerified() && isValidNotice(incoming());
+      allow update: if (isOwner(existing().userId) || isAdmin()) && isValidNotice(incoming())
+        && (
+          incoming().diff(existing()).affectedKeys().hasAny(['simplifiedSummary', 'simplifiedSummaryLanguage', 'warnings', 'contacts', 'status', 'deadline', 'isExpired', 'updatedAt'])
+          ||
+          (isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'isExpired']))
+        );
+      allow delete: if isOwner(existing().userId) || isAdmin();
+
+      // Subcollection: Actions
+      match /actions/{actionId} {
+        allow read: if isOwner(get(/databases/$(database)/documents/notices/$(noticeId)).data.userId) || isAdmin();
+        allow create: if isOwner(incoming().userId) && isValidActionItem(incoming()) && isValidId(actionId);
+        allow update: if (isOwner(existing().userId) || isAdmin()) && isValidActionItem(incoming())
+          && incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'text', 'textKn', 'updatedAt']);
+        allow delete: if isOwner(existing().userId) || isAdmin();
+      }
+    }
+
+    // Collection Group rule for Actions
+    match /{path=**}/actions/{actionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAdmin() || (isSignedIn() && incoming().userId == request.auth.uid && isValidNotification(incoming()));
+      allow update: if isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isOwner(existing().userId) || isAdmin();
+    }
+  }
+}

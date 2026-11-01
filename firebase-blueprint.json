@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and metadata",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "username": { "type": "string" },
+        "aadhaar": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "emailVerified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Notice": {
+      "title": "Government Notice",
+      "description": "A notice uploaded and processed by AI",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "originalText": { "type": "string" },
+        "simplifiedSummary": { "type": "string" },
+        "simplifiedSummaryLanguage": { "type": "string" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "contacts": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["pending", "processed", "urgent", "completed", "expired"] },
+        "deadline": { "type": "string", "format": "date-time" },
+        "isExpired": { "type": "boolean" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "originalText", "status", "simplifiedSummaryLanguage"]
+    },
+    "ActionItem": {
+      "title": "Action Item",
+      "description": "A specific task extracted from a notice",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "noticeId": { "type": "string" },
+        "userId": { "type": "string" },
+        "text": { "type": "string" },
+        "textKn": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["noticeId", "userId", "text", "completed"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app alerts and reminders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "warning", "deadline", "system"] },
+        "read": { "type": "boolean" },
+        "noticeId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "read"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "notices/{noticeId}": {
+      "schema": "Notice",
+      "description": "Collected government notices"
+    },
+    "notices/{noticeId}/actions/{actionId}": {
+      "schema": "ActionItem",
+      "description": "Steps to take for a notice"
+    },
+    "notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    }
+  }
+}

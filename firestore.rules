@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Test connection check
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    // Admins collection
+    match /admins/{adminId} {
+      allow read, write: if true;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Notices collection & subcollections
+    match /notices/{noticeId} {
+      allow read, write: if true;
+
+      // Subcollection: Actions
+      match /actions/{actionId} {
+        allow read, write: if true;
+      }
+
+      // Subcollection: Messages (Community Room)
+      match /messages/{messageId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Collection Group rule for Actions
+    match /{path=**}/actions/{actionId} {
+      allow read, write: if true;
+    }
+
+    // Global Chat (Live Hub)
+    match /global_chat/{msgId} {
+      allow read, write: if true;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read, write: if true;
+    }
+  }
+}
